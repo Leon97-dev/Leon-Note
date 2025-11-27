@@ -1,0 +1,127 @@
+// 스키마 모델 예시 
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+/**
+ * 이커머스 DB 구조
+ * 👉 User ↔ Order = 1:N
+ * 👉 User ↔ UserPreference = 1:1
+ * 👉 User ↔ Product = N:M (찜목록)
+ * 👉 Order ↔ Product = N:M (OrderItem 조인 테이블)
+ */
+
+// ============================================
+// User (유저)
+// ============================================
+model User {
+  id        Int     @id @default(autoincrement())
+  email     String  @unique
+  firstName String  @map("furst_name")
+  lastName  String  @map("last_name")
+  address   String?
+
+  // 관계
+  orders         Order[]
+  userPreference UserPreference?
+  savedProducts  Product[]
+
+  // 타임스탬프
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+}
+
+// ============================================
+// Product (상품)
+// ============================================
+model Product {
+  id          Int      @id @default(autoincrement())
+  name        String
+  description String?
+  category    Category // enum
+  price       Float
+  stock       Int
+
+  // 관계
+  orderItems OrderItem[]
+  savedUsers User[]
+
+  // 타임스탬프
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+}
+
+// ============================================
+// UserPreference (유저 선호)
+// ============================================
+model UserPreference {
+  id           Int     @id @default(autoincrement())
+  receiveEmail Boolean @map("receive_email") // true/false
+
+  // 관계
+  user   User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId Int  @unique
+
+  // 타임스탬프
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+}
+
+// ============================================
+// Order (주문)
+// ============================================
+model Order {
+  id     Int         @id @default(autoincrement())
+  status OrderStatus @default(PENDING) // enum
+
+  // 관계
+  user       User?       @relation(fields: [userId], references: [id], onDelete: SetNull)
+  userId     Int?
+  orderItems OrderItem[]
+
+  // 타임스탬프
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+}
+
+// ============================================
+// OrderItem (주문 상품)
+// ============================================
+model OrderItem {
+  id        Int   @id @default(autoincrement())
+  unitPrice Float @map("unit_price")
+  quantity  Int
+
+  // 관계
+  Product   Product @relation(fields: [productId], references: [id])
+  productId Int
+  Order     Order   @relation(fields: [orderId], references: [id])
+  orderId   Int
+
+  // 타임스탬프
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+}
+
+// ============================================
+// Enum
+// ============================================
+enum Category {
+  FASHION
+  BEAUTY
+  SPORTS
+  ELECTRONICS
+  HOME_INTERIOR
+  HOUSEHOLD_SUPPLIES
+  KITCHENWARE
+}
+
+enum OrderStatus {
+  PENDING
+  COMPLETE
+}
